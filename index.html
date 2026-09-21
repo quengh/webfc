@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>WebFC — 网页版 FC/NES 模拟器（CRT 特效）</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>WebFC <span class="sub">网页版 FC/NES 模拟器 · CRT 滤镜</span></h1>
+    <div id="status-bar">
+      <span id="rom-name">未加载 ROM</span>
+      <span id="fps">-- FPS</span>
+      <span id="mapper-info"></span>
+    </div>
+  </header>
+
+  <main>
+    <section id="screen-wrap">
+      <canvas id="screen" width="1024" height="960"></canvas>
+      <canvas id="fb" width="256" height="240" style="display:none"></canvas>
+      <div id="drop-hint">把 .nes 文件拖到这里加载（纯本地解析，不上传）</div>
+    </section>
+
+    <aside id="panel">
+      <div class="card">
+        <h2>ROM</h2>
+        <input type="file" id="file-input" accept=".nes">
+        <div id="builtin-roms">
+          <h3>内置免费 ROM</h3>
+          <ul id="rom-list"></ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>运行</h2>
+        <div class="btn-row">
+          <button id="btn-pause">暂停</button>
+          <button id="btn-reset">复位</button>
+          <button id="btn-frame">+1 帧</button>
+        </div>
+        <div class="btn-row">
+          <button id="btn-save-state">保存状态</button>
+          <button id="btn-load-state">读取状态</button>
+        </div>
+        <label class="chk"><input type="checkbox" id="chk-autosave" checked> 定时自动存档 (localStorage)</label>
+      </div>
+
+      <div class="card">
+        <h2>CRT 滤镜</h2>
+        <label class="chk"><input type="checkbox" id="chk-crt" checked> 启用 CRT 滤镜</label>
+        <div class="btn-row">
+          <button id="btn-mode-hd">高清模式</button>
+          <button id="btn-mode-crt" class="active">复古 CRT</button>
+        </div>
+        <label>滤镜强度 <input type="range" id="rng-intensity" min="0" max="100" value="100"></label>
+        <label>扫描线 <input type="range" id="rng-scanline" min="0" max="100" value="85"></label>
+        <label>孔栅条纹 <input type="range" id="rng-grille" min="0" max="100" value="55"></label>
+        <label>辉光溢出 <input type="range" id="rng-glow" min="0" max="100" value="70"></label>
+        <label>噪点闪烁 <input type="range" id="rng-noise" min="0" max="100" value="60"></label>
+        <label>桶形畸变 <input type="range" id="rng-curv" min="0" max="100" value="100"></label>
+      </div>
+
+      <div class="card">
+        <h2>声音</h2>
+        <label>音量 <input type="range" id="rng-volume" min="0" max="100" value="55"></label>
+        <label class="chk"><input type="checkbox" id="chk-mute"> 静音</label>
+      </div>
+
+      <div class="card">
+        <h2>按键</h2>
+        <table class="keys">
+          <tr><td>方向</td><td>方向键 / 手柄 D-Pad</td></tr>
+          <tr><td>A</td><td>X</td></tr>
+          <tr><td>B</td><td>Z</td></tr>
+          <tr><td>Start</td><td>Enter</td></tr>
+          <tr><td>Select</td><td>右 Shift</td></tr>
+        </table>
+        <p class="tiny">支持标准 Gamepad API 手柄（按任意键激活）。</p>
+      </div>
+    </aside>
+  </main>
+
+  <div id="touch-pad" class="hidden">
+    <div class="dpad">
+      <button data-btn="UP" class="up">▲</button>
+      <button data-btn="LEFT" class="left">◀</button>
+      <button data-btn="RIGHT" class="right">▶</button>
+      <button data-btn="DOWN" class="down">▼</button>
+    </div>
+    <div class="center-btns">
+      <button data-btn="SELECT">SELECT</button>
+      <button data-btn="START">START</button>
+    </div>
+    <div class="ab-btns">
+      <button data-btn="B" class="b">B</button>
+      <button data-btn="A" class="a">A</button>
+    </div>
+  </div>
+
+  <footer>
+    仅内置免费 homebrew / 测试 ROM；商业 ROM（含任天堂作品）绝不内置或分发，仅支持用户本地拖拽加载自己的 ROM 文件。
+  </footer>
+</div>
+
+<script src="js/cpu.js"></script>
+<script src="js/ppu.js"></script>
+<script src="js/apu.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/nes.js"></script>
+<script src="js/crt.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>

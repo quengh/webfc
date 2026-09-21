@@ -1,0 +1,30 @@
+# ROMs
+roms/
+*.nes
+*.rom
+*.sav
+*.state
+
+# Debug / test output
+*.log
+*.ppm
+*.png
+
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+
+# Environment
+.env
+.env.*
+
+# Private keys / credentials
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+*.secret

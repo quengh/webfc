@@ -1,0 +1,81 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; background: #0c0e12; color: #d7dbe2;
+  font-family: "SF Mono", Menlo, Consolas, "PingFang SC", monospace;
+  font-size: 14px;
+}
+#app { max-width: 1400px; margin: 0 auto; padding: 12px; }
+header { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+h1 { font-size: 20px; margin: 6px 0; color: #7ee787; }
+h1 .sub { font-size: 13px; color: #8b949e; font-weight: normal; }
+#status-bar { display: flex; gap: 14px; color: #8b949e; font-size: 12px; }
+#fps { color: #e3b341; }
+main { display: flex; gap: 16px; margin-top: 10px; flex-wrap: wrap; }
+#screen-wrap { position: relative; }
+#screen {
+  width: 768px; height: 720px; max-width: 92vw;
+  background: #000; border: 1px solid #232833; border-radius: 8px;
+  display: block; image-rendering: pixelated;
+}
+#drop-hint {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: #56607a; pointer-events: none; font-size: 13px; text-align: center; padding: 20px;
+}
+#screen-wrap.has-rom #drop-hint { display: none; }
+#screen-wrap.dragover #screen { outline: 2px dashed #7ee787; }
+
+#panel { flex: 1; min-width: 280px; max-width: 380px; }
+.card {
+  background: #141821; border: 1px solid #232833; border-radius: 8px;
+  padding: 10px 12px; margin-bottom: 10px;
+}
+.card h2 { font-size: 13px; margin: 0 0 8px; color: #79c0ff; }
+.card h3 { font-size: 12px; margin: 8px 0 4px; color: #8b949e; }
+.btn-row { display: flex; gap: 6px; margin-bottom: 6px; }
+button {
+  background: #21262d; color: #d7dbe2; border: 1px solid #30363d;
+  border-radius: 6px; padding: 6px 10px; cursor: pointer; font-family: inherit; font-size: 12px;
+}
+button:hover { background: #30363d; }
+button.active { background: #1f6feb33; border-color: #1f6feb; color: #79c0ff; }
+label { display: block; margin: 4px 0; font-size: 12px; color: #8b949e; }
+input[type=range] { width: 55%; vertical-align: middle; }
+.chk { display: flex; align-items: center; gap: 6px; }
+#rom-list { list-style: none; padding: 0; margin: 0; }
+#rom-list li {
+  padding: 5px 8px; border: 1px solid #232833; border-radius: 6px;
+  margin-bottom: 4px; cursor: pointer; font-size: 12px;
+}
+#rom-list li:hover { background: #1f2530; }
+#rom-list li .tag { color: #7ee787; font-size: 10px; margin-left: 6px; }
+.keys { width: 100%; font-size: 12px; color: #8b949e; border-collapse: collapse; }
+.keys td { padding: 2px 0; }
+.tiny { font-size: 11px; color: #56607a; }
+footer { margin-top: 14px; font-size: 11px; color: #56607a; }
+
+#touch-pad {
+  position: fixed; inset: auto 0 0 0; height: 220px; display: flex;
+  justify-content: space-between; align-items: center; padding: 10px 18px;
+  background: #0c0e12ee; user-select: none;
+}
+#touch-pad.hidden { display: none; }
+#touch-pad button {
+  width: 56px; height: 56px; border-radius: 50%; font-size: 14px; touch-action: none;
+}
+.dpad { position: relative; width: 168px; height: 168px; }
+.dpad button { position: absolute; }
+.dpad .up { top: 0; left: 56px; }
+.dpad .down { bottom: 0; left: 56px; }
+.dpad .left { top: 56px; left: 0; }
+.dpad .right { top: 56px; right: 0; }
+.ab-btns { display: flex; gap: 14px; align-items: center; }
+.ab-btns .a { background: #8a3324; }
+.ab-btns .b { background: #3a3f4b; }
+.center-btns { display: flex; gap: 10px; }
+.center-btns button { width: 74px; height: 34px; border-radius: 17px; font-size: 10px; }
+
+@media (max-width: 900px) {
+  #screen { width: 92vw; height: calc(92vw * 0.9375); }
+  #panel { max-width: 100%; }
+  body { padding-bottom: 230px; }
+}

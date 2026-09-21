@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>harness</title></head>
+<body>
+<canvas id="fb" width="256" height="240"></canvas>
+<canvas id="screen" width="512" height="480"></canvas>
+<pre id="results">RUNNING</pre>
+<script src="../js/cpu.js"></script>
+<script src="../js/ppu.js"></script>
+<script src="../js/apu.js"></script>
+<script src="../js/cart.js"></script>
+<script src="../js/nes.js"></script>
+<script src="../js/crt.js"></script>
+<script>
+/*
+ * Headless Chrome test harness:
+ *  - loads ROM(s), runs N frames, verifies framebuffer is non-black and animates
+ *  - injects input and verifies state diverges (interactive)
+ *  - verifies save/load state determinism
+ *  - verifies the WebGL CRT filter compiles + renders (non-black output)
+ *  - counts console errors / window.onerror events
+ */
+(function () {
+  var consoleErrors = [];
+  var origErr = console.error;
+  console.error = function () {
+    consoleErrors.push(Array.prototype.join.call(arguments, ' '));
+    return origErr.apply(console, arguments);
+  };
+  window.addEventListener('error', function (e) {
+    consoleErrors.push('window.onerror: ' + e.message + ' @' + e.filename + ':' + e.lineno);
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    consoleErrors.push('unhandledrejection: ' + e.reason);
+  });
+
+  var params = new URLSearchParams(location.search);
+  var romPath = params.get('rom') || '../roms/nes-test-roms-master/240pee/240pee.nes';
+  var frames = parseInt(params.get('frames') || '240', 10);
+
+  function fbHash(nes) {
+    var h = 0x811c9dc5;
+    var fb = nes.ppu.fb;
+    for (var i = 0; i < fb.length; i += 7) {
+      h ^= fb[i]; h = (h * 16777619) >>> 0;
+    }
+    return h.toString(16);
+  }
+  function nonBlack(nes) {
+    var n = 0;
+    for (var i = 0; i < nes.ppu.fb.length; i++) if ((nes.ppu.fb[i] & 0xFFFFFF) !== 0) n++;
+    return n;
+  }
+
+  function runOne(bytes, name) {
+    var out = { name: name };
+    try {
+      var a = new NES(44100), b = new NES(44100);
+      var info = a.loadROM(bytes); b.loadROM(bytes);
+      out.mapper = info.mapper;
+      var hashes = [];
+      for (var f = 0; f < frames; f++) {
+        a.runFrame();
+        if (f === 30 || f === Math.floor(frames / 2) || f === frames - 1) hashes.push(fbHash(a));
+      }
+      out.hashes = hashes;
+      out.nonBlackPixels = nonBlack(a);
+      out.animates = hashes[0] !== hashes[1] || hashes[1] !== hashes[2];
+      out.nonBlackOK = out.nonBlackPixels > 300;
+
+      for (var f2 = 0; f2 < frames; f2++) b.runFrame();
+      for (var f3 = 0; f3 < 60; f3++) {
+        b.setButton(1, 'START', f3 % 10 < 3);
+        b.setButton(1, 'DOWN', f3 % 20 >= 8 && f3 % 20 < 11);
+        b.runFrame();
+      }
+      a.runFrame(); b.runFrame();
+      out.inputChangesState = fbHash(a) !== fbHash(b);
+
+      // audio
+      var snd = 0;
+      for (var f4 = 0; f4 < 90; f4++) {
+        a.runFrame();
+        a.apu.drain().forEach(function (s) { if (Math.abs(s) > 0.01) snd++; });
+      }
+      out.audioNonSilentSamples = snd;
+
+      // save state determinism
+      var saved = a.serialize();
+      for (var f5 = 0; f5 < 30; f5++) a.runFrame();
+      var h1 = fbHash(a);
+      a.loadState(saved);
+      for (var f6 = 0; f6 < 30; f6++) a.runFrame();
+      var h2 = fbHash(a);
+      out.saveStateOK = (h1 === h2);
+
+      // "animates" alone is fine for non-interactive ROMs (test ROMs), input
+      // response is the criterion for interactive ones; either proves the
+      // machine is genuinely running
+      out.ok = out.nonBlackOK && out.saveStateOK && (out.inputChangesState || out.animates);
+    } catch (e) {
+      out.ok = false;
+      out.exception = e.message + '\n' + (e.stack || '');
+    }
+    return out;
+  }
+
+  function testCRT() {
+    var out = { name: 'CRT WebGL filter' };
+    try {
+      var cv = document.getElementById('screen');
+      var filter = new CRTFilter(cv);
+      // feed a synthetic frame
+      var px = new Uint8ClampedArray(256 * 240 * 4);
+      for (var y = 0; y < 240; y++) {
+        for (var x = 0; x < 256; x++) {
+          var i = (y * 256 + x) * 4;
+          px[i] = (x * 2) & 255; px[i + 1] = (y) & 255; px[i + 2] = 128; px[i + 3] = 255;
+        }
+      }
+      filter.upload(px);
+      filter.render(1.234, { intensity: 1.0, scanline: 0.85, grille: 0.55, glow: 0.7, noise: 0.06, curvature: 1.0 });
+      var gl = filter.gl;
+      var buf = new Uint8Array(4 * 64 * 64);
+      gl.readPixels(200, 200, 64, 64, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+      var energy = 0;
+      for (var j = 0; j < buf.length; j += 4) energy += buf[j] + buf[j + 1] + buf[j + 2];
+      out.pixelsNonBlack = energy > 1000;
+      // clean/HD mode too
+      filter.render(2.0, { intensity: 0 });
+      out.ok = out.pixelsNonBlack;
+    } catch (e) {
+      out.ok = false;
+      out.exception = e.message;
+    }
+    return out;
+  }
+
+  function finish(results) {
+    results.consoleErrors = consoleErrors;
+    results.ok = results.tests.every(function (t) { return t.ok; }) && consoleErrors.length === 0;
+    document.getElementById('results').textContent = JSON.stringify(results);
+    document.title = results.ok ? 'HARNESS_OK' : 'HARNESS_FAIL';
+    window.__harnessResults = results;
+    console.log('HARNESS_RESULTS ' + JSON.stringify(results));
+  }
+
+  fetch(romPath).then(function (r) {
+    if (!r.ok) throw new Error('fetch failed ' + r.status);
+    return r.arrayBuffer();
+  }).then(function (buf) {
+    var bytes = new Uint8Array(buf);
+    var results = { rom: romPath, frames: frames, tests: [] };
+    results.tests.push(runOne(bytes, romPath));
+    results.tests.push(testCRT());
+    finish(results);
+  }).catch(function (e) {
+    finish({ rom: romPath, tests: [{ name: 'load', ok: false, exception: String(e) }], loadFailed: true });
+  });
+})();
+</script>
+</body>
+</html>
