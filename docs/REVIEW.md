@@ -1,96 +1,61 @@
 # WebFC 代码审查摘要
 
-审查日期：2026-09-21  
-审查范围：静态分析 + 无 ROM 本地实测（cpu_selftest.js / 自制微型 ROM 冠烟测试）
+审查日期：2026-09-21。范围：静态代码分析、JavaScript 语法检查、CPU 自测和自制数据缺陷复现。未复测完整游戏兼容性或浏览器图像、声音效果。
 
----
+## 总体评价
 
-## 架构概述
+适合作为 AI 辅助编程的个人练手 demo，不应视为成熟、周期精确的 NES 模拟器。
 
-**优点**
-- 零依赖：纠 HTML5 实现，无构建工具，无第三方库
-- CommonJS 与浏览器双环境兼容，便于 Node 测试
-- 各模块职责明确：cpu / ppu / apu / cart / nes / crt / ui​独立成文件
-- CPU 精度高：官方指令 + 主流非官方指令全实现，page-cross/分支/JSR/RTI/NMI/IRQ 周期正确，dummy read 行为与硬件一致
+- 核心职责分为 CPU、PPU、APU、卡带映射、总线与调度、CRT 滤镜、UI 七个模块，结构直观。
+- 浏览器运行不需要框架或 npm 构建；核心模块兼容 CommonJS，便于在 Node.js 中测试。
+- 原有测试覆盖了不同开发阶段，但多数脚本依赖外部 ROM、固定目录或未附带的生成数据，可复现性仍需整理。
+- 本次只整理发布材料，运行代码与原始源码保持一致，以下缺陷没有被修复。
 
-**局限**
-- PPU 为逐指令驱动，无法实现 dot 级精细时序
-- `tests/` 包含大量开发过程脚本，历史日志已排除未上传
+## Mapper 7 / AxROM：三个已确认问题
 
----
+位置均在 `js/cart.js`：
 
-## 已知问题（静态分析确认）
+1. **第 169 行，bank 写入取位错误。** `(val >> 4) & 7` 使用高位，而 AxROM 的 PRG bank 选择使用低三位。写入 `2` 后当前 `prgBank` 仍为 `0`。
+2. **第 123–124 行，读取忽略 bank 寄存器。** `readPRG()` 的 Mapper 7 分支只使用窗口内地址，始终访问第一个 32KB bank。即使手动设定 `prgBank = 2`，读取结果仍不改变。
+3. **第 170–171 行，镜像设置被覆盖。** 条件表达式两边都赋值 `2`，随后又无条件设为 `0`，无法按控制位切换单屏页。
 
-### 🔴 问题 1：AxROM (Mapper 7) bank 写入位选择错误
-**位置**：`js/cart.js` 第 169 行
+### 无外部 ROM 的最小复现
 
-```js
-// 当前（错误）：使用 bit4-6 选 bank
-this.prgBank = (val >> 4) & 7;
+在仓库根目录执行以下代码。测试数据完全在内存中构造，不含游戏内容。
 
-// 硬件规范：应使用 bit0-2
-this.prgBank = val & 7;
+```bash
+node <<'JS'
+const Cart = require('./js/cart.js');
+const rom = new Uint8Array(16 + 0x20000);
+rom.set([0x4e, 0x45, 0x53, 0x1a, 8, 0, 0x70, 0]);
+rom[16 + 0x10000] = 0x42; // bank 2 的首字节
+const cart = new Cart(rom);
+cart.writePRG(0x8000, 2);
+console.log('选 bank 2 后：', cart.prgBank, cart.readPRG(0x8000));
+cart.prgBank = 2;
+console.log('手动设置 bank 后：', cart.readPRG(0x8000));
+cart.writePRG(0x8000, 0x10);
+console.log('镜像状态：', cart.mirroring);
+JS
 ```
 
-影响：除非 val >= 0x10，否则 bank 切换无效。
+本次实际结果依次为 `0 0`、`0`、`0`。正确访问 bank 2 时首字节应为 `66`（`0x42`）。这些结果确认的是**缺陷存在**，不代表兼容性测试通过。
 
-### 🔴 问题 2：AxROM readPRG 忽略 prgBank 寄存器
-**位置**：`js/cart.js` 第 123 行
+## PPU / APU 限制
 
-```js
-// 当前（错误）：备忘 this.prgBank，始终从偏移 0 读取
-case 7:
-  return this._prgReadBase((addr - 0x8000) & 0x7FFF);
+- CPU 执行指令后批量推进 PPU，寄存器访问和 NMI 的精细时序存在局限；不能据此保证任何游戏均不受影响。
+- Sprite overflow 使用近似处理，未完整实现硬件的精灵评估行为。
+- DMC 音频通道未实现，依赖该通道的采样音效可能缺失。
+- Mapper 0/1/2/3/66 有实现，但本次没有全面验证其正确性。
 
-// 正确应为：
-case 7:
-  return this._prgReadBase((this.prgBank & 7) * 0x8000 + ((addr - 0x8000) & 0x7FFF));
-```
+## 本次验证与范围
 
-影响：128KB AxROM 游戏只能运行 bank 0，bank 切换完全失效。这两个问题通过自制微型 ROM 冠烟测试已公开复现（写入 val=2 切到 bank 2，读取应得 0x42 实际得 0x00）。
+- 所有上传的 `.js` 文件均通过 `node --check`。
+- `node tests/cpu_selftest.js` 返回 `CPU OPCODE SELF-TEST: ALL OK`。脚本只检查参考表定义的操作码并做行为抽查，不能解释为全部 256 种操作码或所有边界情况均已验证。
+- 上述 AxROM 最小复现已实际执行。
+- `index.html`、`css/style.css` 和七个核心 JS 文件共九个文件，与原始 ZIP 逐字节一致。
+- 本次未重新运行需要外部 ROM 的 blargg 全量测试、Chrome 图像测试或真实游戏测试。旧开发记录不作为本次通过率。
 
-### 🟡 问题 3：AxROM 镜像控制是死代码
-**位置**：`js/cart.js` 第 170-171 行
+## 发布检查
 
-```js
-this.mirroring = (val & 0x10) ? 2 : 2; // 两分支均赋 2
-this.mirroring = 0;                      // 立即覆盖：始终水平镜像
-```
-
-影响：AxROM 应用 bit4 控制单屏镜像，当前始终水平镜像近似，可能导致背景滚动错误。
-
----
-
-## PPU / APU 已知局限（架构决定的已承设限制）
-
-| 项 | 说明 |
-|-----|------|
-| PPU dot 级 NMI 时序 | 逐指令驱动，无法实现 ±1 dot 精度；ppu_vbl_nmi 02/04–08/10 共 7 项 blargg 失败 |
-| Sprite overflow | 扈描线总数 > 8 简单近似，不模拟硬件评估怪癖；sprite_overflow 1/3/4/5 失败 |
-| DMC | APU 第五通道未实现，部分游戏 PCM 采样音效可能缺失 |
-
----
-
-## 本次实际测试结果
-
-**语法检查**：js/ 目录全部 7 个 JS 文件 `node --check`，全部通过。
-
-**CPU 自测**：`node tests/cpu_selftest.js` 输出
-```
-CPU OPCODE SELF-TEST: ALL OK
-```
-参考表覆盖的操作码和行为抄查均通过（论证表跳过 LEN 未定义项，不声称全部 256 已覆盖）。
-
-**自制微型 ROM 冠烟 + 缺陷复现**：11 项，包含“预期缺陷存在”断言（即 AxROM bank 切换 bug 已公开可复现），全部通过。
-
----
-
-## 安全扫描结论
-
-| 检查项 | 结果 |
-|----------|------|
-| 商业 ROM 文件 | ✅ 无 |
-| 密钥 / Token 模式 | ✅ 无 |
-| 内部域名 / 私人路径 | ✅ 无（/tmp/nes-emu/ 为开发过程编译期路径） |
-| ZIP 路径穿越 | ✅ 无 |
-| 符号链接 | ✅ 无 |
+本次检查未发现待发布文件中的凭据；仓库未包含 ROM、原始调试日志或像素转储。此检查不是全面安全审计。原有开发脚本中的临时目录需使用者自行调整，参见 [测试目录说明](../tests/README.md)。

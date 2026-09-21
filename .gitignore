@@ -8,7 +8,6 @@ roms/
 # Debug / test output
 *.log
 *.ppm
-*.png
 
 # macOS
 .DS_Store
