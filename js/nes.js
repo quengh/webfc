@@ -54,6 +54,9 @@
     this.ppu = new PPU(this);
     this.apu = new APU(this, sampleRate || 44100);
     this.ppu.nmiCallback = function () { self.cpu.triggerNMI(); };
+    this.ppu.onScanline = function () {
+      if (self.cart && self.cart.clockScanline) self.cart.clockScanline();
+    };
 
     this.pad1 = new Joypad();
     this.pad2 = new Joypad();
@@ -116,8 +119,9 @@
       this.ppu.tick(); this.ppu.tick(); this.ppu.tick();
       this.apu.tick();
     }
-    // APU frame IRQ is level-triggered: asserted until $4015 read / $4017 write
-    this.cpu.setIRQ(this.apu.frameIRQ);
+    // IRQ is level-triggered: asserted until the source acknowledges
+    // ($4015 read / $4017 write for the APU frame IRQ, $E000 write for MMC3)
+    this.cpu.setIRQ(this.apu.frameIRQ || (this.cart && this.cart.irqPending));
     return c;
   };
 
@@ -192,6 +196,12 @@
         mmc1Ctrl: this.cart.mmc1Ctrl, mmc1Chr0: this.cart.mmc1Chr0,
         mmc1Chr1: this.cart.mmc1Chr1, mmc1Prg: this.cart.mmc1Prg,
         prgBank: this.cart.prgBank || 0,
+        mmc3Sel: this.cart.mmc3Sel, mmc3Regs: this.cart.mmc3Regs.slice(),
+        mmc3IRQLatch: this.cart.mmc3IRQLatch,
+        mmc3IRQCounter: this.cart.mmc3IRQCounter,
+        mmc3IRQReload: this.cart.mmc3IRQReload,
+        mmc3IRQEnable: this.cart.mmc3IRQEnable,
+        irqPending: this.cart.irqPending,
         mirroring: this.cart.mirroring
       }
     });
@@ -247,6 +257,13 @@
       this.cart.mmc1Ctrl = c.mmc1Ctrl; this.cart.mmc1Chr0 = c.mmc1Chr0;
       this.cart.mmc1Chr1 = c.mmc1Chr1; this.cart.mmc1Prg = c.mmc1Prg;
       this.cart.prgBank = c.prgBank;
+      this.cart.mmc3Sel = c.mmc3Sel || 0;
+      if (c.mmc3Regs) this.cart.mmc3Regs = c.mmc3Regs.slice();
+      this.cart.mmc3IRQLatch = c.mmc3IRQLatch || 0;
+      this.cart.mmc3IRQCounter = c.mmc3IRQCounter || 0;
+      this.cart.mmc3IRQReload = !!c.mmc3IRQReload;
+      this.cart.mmc3IRQEnable = !!c.mmc3IRQEnable;
+      this.cart.irqPending = !!c.irqPending;
       this.cart.mirroring = c.mirroring;
     }
   };

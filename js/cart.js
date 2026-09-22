@@ -42,6 +42,14 @@
     this.mmc1Ctrl = 0x0C; this.mmc1Chr0 = 0; this.mmc1Chr1 = 0; this.mmc1Prg = 0;
     // UxROM bank
     this.uxBank = 0;
+    // MMC3 state
+    this.mmc3Sel = 0;        // $8000 bank select: bits 0-2 target, bit 6 PRG mode, bit 7 CHR A12 inversion
+    this.mmc3Regs = [0, 0, 0, 0, 0, 0, 0, 0]; // R0-R5 CHR banks, R6/R7 PRG 8KB banks
+    this.mmc3IRQLatch = 0;
+    this.mmc3IRQCounter = 0;
+    this.mmc3IRQReload = false;
+    this.mmc3IRQEnable = false;
+    this.irqPending = false; // level-triggered CPU IRQ line state
   }
 
   Cart.prototype.reset = function () {
@@ -68,6 +76,16 @@
         // 8KB mode: one 8KB window, bank = CHR0 with bit 0 ignored
         b = this.mmc1Chr0 & 0xFE;
         off = b * 0x1000 + addr;
+      }
+    } else if (this.mapper === 4) {
+      // MMC3 CHR: two 2KB windows (R0/R1) + four 1KB windows (R2-R5);
+      // the 2KB pair lives at $0000, or at $1000 when A12 is inverted
+      var r = this.mmc3Regs, a = addr & 0x1FFF;
+      var inv = (this.mmc3Sel >> 7) & 1;
+      if ((a < 0x1000) !== !!inv) {
+        off = (r[(a >> 11) & 1] & 0xFE) * 0x400 + (a & 0x7FF);   // 2KB window
+      } else {
+        off = r[2 + ((a >> 10) & 3)] * 0x400 + (a & 0x3FF);       // 1KB windows
       }
     } else {
       var banks = total >> 13;              // 8KB banks (CNROM/GxROM/...)
@@ -120,6 +138,21 @@
           return this._prgReadBase((this.uxBank % nb) * 0x4000 + (addr - 0x8000));
         }
         return this._prgReadBase(prgLen - 0x4000 + (addr - 0xC000));
+      case 4: {
+        // MMC3: four 8KB windows at $8000/$A000/$C000/$E000.
+        // Mode 0: R6, R7, second-to-last, last. Mode 1 swaps the first and third.
+        var nb = prgLen >> 13;
+        var slot = (addr - 0x8000) >> 13;
+        var r6 = this.mmc3Regs[6] & 0x3F, r7 = this.mmc3Regs[7] & 0x3F;
+        var secondLast = nb - 2, last = nb - 1;
+        var b;
+        if (this.mmc3Sel & 0x40) {
+          b = slot === 0 ? secondLast : slot === 1 ? r7 : slot === 2 ? r6 : last;
+        } else {
+          b = slot === 0 ? r6 : slot === 1 ? r7 : slot === 2 ? secondLast : last;
+        }
+        return this._prgReadBase((b % nb) * 0x2000 + (addr & 0x1FFF));
+      }
       case 7:
         return this._prgReadBase((addr - 0x8000) & 0x7FFF);
       case 66:
@@ -165,6 +198,22 @@
       case 2:
         this.uxBank = val & 0x0F;
         break;
+      case 4:
+        // MMC3 registers are selected by address block + even/odd
+        switch (addr & 0xE001) {
+          case 0x8000: this.mmc3Sel = val; break;
+          case 0x8001: this.mmc3Regs[this.mmc3Sel & 7] = val; break;
+          case 0xA000:
+            // bit 0: 0 = vertical, 1 = horizontal (ignored on four-screen boards)
+            if (!this.fourScreen) this.mirroring = (val & 1) ? 0 : 1;
+            break;
+          case 0xA001: break; // PRG-RAM protect: RAM kept always writable
+          case 0xC000: this.mmc3IRQLatch = val; break;
+          case 0xC001: this.mmc3IRQReload = true; break;
+          case 0xE000: this.irqPending = false; this.mmc3IRQEnable = false; break;
+          case 0xE001: this.mmc3IRQEnable = true; break;
+        }
+        break;
       case 7:
         this.prgBank = (val >> 4) & 7;
         this.mirroring = (val & 0x10) ? 2 : 2; // AxROM single-screen; treat as 2 banks-independent
@@ -175,6 +224,20 @@
         this.chrBank = val & 3;
         break;
     }
+  };
+
+  // MMC3 scanline IRQ counter. Real hardware clocks it on filtered PPU A12
+  // rising edges (~once per rendered scanline); we clock it once per scanline
+  // from the PPU, which is accurate enough for status-bar split games.
+  Cart.prototype.clockScanline = function () {
+    if (this.mapper !== 4) return;
+    if (this.mmc3IRQReload || this.mmc3IRQCounter === 0) {
+      this.mmc3IRQCounter = this.mmc3IRQLatch;
+    } else {
+      this.mmc3IRQCounter--;
+    }
+    this.mmc3IRQReload = false;
+    if (this.mmc3IRQCounter === 0 && this.mmc3IRQEnable) this.irqPending = true;
   };
 
   Cart.prototype.info = function () {
