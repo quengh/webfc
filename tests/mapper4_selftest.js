@@ -144,6 +144,7 @@ c = newIRQ();
 c.writePRG(0xC000, 2); c.writePRG(0xC001, 0); c.writePRG(0xE001, 0);
 c.clockScanline(); // reload -> 2
 c.writePRG(0xC001, 0);
+eq(c.mmc3IRQCounter, 0, '$C001 clears the counter immediately');
 c.clockScanline(); // reload again -> 2 (not decremented)
 eq(c.mmc3IRQCounter, 2, 'reload flag forces reload on next clock');
 c.clockScanline(); // 2 -> 1
