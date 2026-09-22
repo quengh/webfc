@@ -33,11 +33,11 @@ python3 -m http.server 8848 --bind 127.0.0.1
 
 > **ROM 说明**：页面「内置免费 ROM」仅包含开源/自由分发的 homebrew 与测试 ROM（240p Test Suite、NES15、nestest、Simple Parallax Demo），许可证见 `roms/` 与 `roms/index.json`。不含任何商业 ROM。自有的 `.nes` 可直接拖拽加载；也可以放入 `roms/` 并在 `roms/local.json` 登记（该文件与 ROM 一样被 `.gitignore` 忽略、不入库），页面会以「本地 ROM」列表显示，点击即可加载。
 
-`roms/local.json` 与 `roms/index.json` 同构：
+`roms/local.json` 与 `roms/index.json` 同构（`file` 只写 `roms/` 下的文件名，不带路径前缀）：
 
 ```json
 [
-  { "name": "显示名称", "file": "roms/ 下的文件名.nes", "tag": "local", "license": "自备商业 ROM，仅本地加载，不随仓库分发" }
+  { "name": "显示名称", "file": "foo.nes", "tag": "local", "license": "自备商业 ROM，仅本地加载，不随仓库分发" }
 ]
 ```
 
