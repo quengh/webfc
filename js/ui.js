@@ -193,7 +193,11 @@
   var auto = new URLSearchParams(location.search).get('rom');
   function addRomItem(ul, item) {
     var li = document.createElement('li');
-    li.innerHTML = item.name + ' <span class="tag">' + item.tag + '</span>';
+    li.appendChild(document.createTextNode(item.name + ' '));
+    var tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = item.tag || '';
+    li.appendChild(tag);
     li.title = item.license || '';
     li.addEventListener('click', function () {
       fetch('roms/' + item.file).then(function (r) { return r.arrayBuffer(); })
