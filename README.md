@@ -12,7 +12,7 @@
 - **CPU**：6502 (Ricoh 2A03) 核，官方 151 条指令 + 常见非官方指令，包含周期计数实现，但不保证周期级完全准确
 - **PPU**：2C02 逐像素渲染管线，支持逐点滚动、sprite 0 hit、8x8/8x16 精灵
 - **APU**：2A03 APU，方波 ×2 + 三角波 + 噪声 + 帧计数器（DMC 未实现，见限制说明）
-- **Mapper**：0 (NROM) / 1 (MMC1) / 2 (UxROM) / 3 (CNROM) / 7 (AxROM，有缺陷) / 66 (GxROM)
+- **Mapper**：0 (NROM) / 1 (MMC1) / 2 (UxROM) / 3 (CNROM) / 4 (MMC3，含 IRQ 扫描线计数) / 7 (AxROM，有缺陷) / 66 (GxROM)
 - **CRT 效果**：WebGL 后处理，扫描线/孔栅/辉光/噪点/桶形畸变，各独立可调
 - **输入**：键盘 + 标准 Gamepad API 手柄 + 移动端触屏虚拟手柄（自动显示）
 - **即时存档**：localStorage 按 ROM 名哈希分槽，支持自动存档
@@ -31,7 +31,15 @@ python3 -m http.server 8848 --bind 127.0.0.1
 
 浏览器打开 `http://127.0.0.1:8848`，然后自行选择你有权使用的本地 `.nes` 文件。
 
-> **ROM 说明**：页面「内置免费 ROM」仅包含开源/自由分发的 homebrew 与测试 ROM（240p Test Suite、NES15、nestest、Simple Parallax Demo），许可证见 `roms/` 与 `roms/index.json`。不含任何商业 ROM。本地 `.nes` 请自行拖拽加载。
+> **ROM 说明**：页面「内置免费 ROM」仅包含开源/自由分发的 homebrew 与测试 ROM（240p Test Suite、NES15、nestest、Simple Parallax Demo），许可证见 `roms/` 与 `roms/index.json`。不含任何商业 ROM。自有的 `.nes` 可直接拖拽加载；也可以放入 `roms/` 并在 `roms/local.json` 登记（该文件与 ROM 一样被 `.gitignore` 忽略、不入库），页面会以「本地 ROM」列表显示，点击即可加载。
+
+`roms/local.json` 与 `roms/index.json` 同构：
+
+```json
+[
+  { "name": "显示名称", "file": "roms/ 下的文件名.nes", "tag": "local", "license": "自备商业 ROM，仅本地加载，不随仓库分发" }
+]
+```
 
 ---
 
@@ -54,10 +62,11 @@ python3 -m http.server 8848 --bind 127.0.0.1
 ## 已知限制
 
 - **Mapper 7 / AxROM**：bank 读取、bank 写入位选择、单屏镜像控制均存在缺陷，目前不可靠
+- **MMC3 IRQ 时序**：IRQ 扫描线计数器按「每渲染扫描线触发一次」近似（硬件是 PPU A12 滤波计数），依赖行中段精确 A12 时序的罕见特效可能有偏差；状态栏分屏类用法（如 Super Mario Bros. 3）已实测正确
 - **PPU 精细时序**：CPU 按指令推进 PPU，精细的寄存器访问与 NMI 时序仍有局限，不能视为周期精确模拟
 - **Sprite overflow**：近似实现，不模拟硬件评估怪癖
 - **DMC 未实现**：APU 第五通道（PCM 采样）缺失，部分游戏采样音效可能缺失（不是所有游戏全无声）
-- **兼容性未系统验证**：Mapper 0/1/2/3/66 均有实现，但不保证所有 ROM 正确运行
+- **兼容性未系统验证**：Mapper 0/1/2/3/4/66 均有实现；已实测 RoboCop (USA)、Super Mario Bros. 3 (USA) (Rev 1)（均为 MMC3）从开机到完整游玩，其余 ROM 不保证
 - 商业游戏兼容性因 ROM 而异，本项目未针对完整兼容性做优化
 
 ---
@@ -80,6 +89,7 @@ webfc/
 ├── docs/REVIEW.md      代码审查摘要（架构、已知问题）
 └── tests/              测试脚本（历史开发辅助脚本）
     ├── cpu_selftest.js  独立 CPU 操作码自测（无外部依赖）
+    ├── mapper4_selftest.js  MMC3 合成 ROM 自测（无外部依赖）
     └── ...（其余脚本需自备 ROM 及调整环境，见 tests/README.md）
 ```
 
@@ -100,6 +110,14 @@ node tests/cpu_selftest.js
 ```
 
 输出 `CPU OPCODE SELF-TEST: ALL OK` 表示通过。
+
+**Mapper 4 (MMC3) 自测**（无需 ROM）：
+
+```bash
+node tests/mapper4_selftest.js
+```
+
+输出 `MAPPER4 SELF-TEST: ALL OK` 表示通过（内存合成 iNES 镜像，验证 MMC3 PRG/CHR bank 映射、镜像控制与 IRQ 扫描线计数语义）。
 
 其他历史测试脚本（`tests/r2-*`、`tests/r3-*`、`tests/r4-*`、`tests/playtest.js` 等）需要自备合规测试 ROM 并调整 `/tmp/nes-emu/` 等路径，仅供开发参考，非开箱即用测试。
 

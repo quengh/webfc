@@ -12,6 +12,14 @@ node tests/cpu_selftest.js
 
 脚本将参考表定义的操作码与指令长度、基准周期数进行对照，并对算术、标志位等行为做抽查。未定义参考项会被跳过，因此通过不等于全部 256 种操作码及全部硬件行为均已验证。
 
+Mapper 4 (MMC3) 自测（同样无需外部 ROM）：
+
+```bash
+node tests/mapper4_selftest.js
+```
+
+预期输出：`MAPPER4 SELF-TEST: ALL OK`。使用内存合成的 iNES 镜像验证 MMC3 的 PRG/CHR bank 映射、镜像控制与 IRQ 扫描线计数语义，不含任何游戏数据。
+
 JavaScript 语法检查：
 
 ```bash
