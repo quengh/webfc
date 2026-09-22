@@ -370,6 +370,11 @@
       this.sprites = []; this.spriteZeroHere = false;
     }
 
+    // mapper scanline hook (MMC3 IRQ counter etc.): once per rendered scanline
+    if ((visible || preRender) && rendering && dot === 260 && this.onScanline) {
+      this.onScanline();
+    }
+
     if (visible && dot >= 1 && dot <= 256) {
       this._renderPixel(dot - 1, line);
     }
