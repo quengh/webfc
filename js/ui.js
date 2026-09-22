@@ -188,24 +188,35 @@
     if (e.dataTransfer && e.dataTransfer.files) handleFiles(e.dataTransfer.files);
   });
 
-  // built-in free ROM list
+  // ROM lists: roms/index.json (bundled free ROMs) and optional roms/local.json
+  // (user-supplied local ROMs, gitignored / never distributed)
+  var auto = new URLSearchParams(location.search).get('rom');
+  function addRomItem(ul, item) {
+    var li = document.createElement('li');
+    li.innerHTML = item.name + ' <span class="tag">' + item.tag + '</span>';
+    li.title = item.license || '';
+    li.addEventListener('click', function () {
+      fetch('roms/' + item.file).then(function (r) { return r.arrayBuffer(); })
+        .then(function (buf) { loadROM(new Uint8Array(buf), item.name); });
+    });
+    ul.appendChild(li);
+    if (auto && item.file === auto) {
+      fetch('roms/' + item.file).then(function (r) { return r.arrayBuffer(); })
+        .then(function (buf) { loadROM(new Uint8Array(buf), item.name); });
+    }
+  }
   fetch('roms/index.json').then(function (r) { return r.json(); }).then(function (list) {
     var ul = document.getElementById('rom-list');
-    var auto = new URLSearchParams(location.search).get('rom');
-    list.forEach(function (item) {
-      var li = document.createElement('li');
-      li.innerHTML = item.name + ' <span class="tag">' + item.tag + '</span>';
-      li.title = item.license || '';
-      li.addEventListener('click', function () {
-        fetch('roms/' + item.file).then(function (r) { return r.arrayBuffer(); })
-          .then(function (buf) { loadROM(new Uint8Array(buf), item.name); });
-      });
-      ul.appendChild(li);
-      if (auto && item.file === auto) {
-        fetch('roms/' + item.file).then(function (r) { return r.arrayBuffer(); })
-          .then(function (buf) { loadROM(new Uint8Array(buf), item.name); });
-      }
-    });
+    list.forEach(function (item) { addRomItem(ul, item); });
+  }).catch(function () {});
+  fetch('roms/local.json').then(function (r) {
+    if (!r.ok) throw new Error('no local.json');
+    return r.json();
+  }).then(function (list) {
+    if (!list || !list.length) return;
+    document.getElementById('local-roms').classList.remove('hidden');
+    var ul = document.getElementById('local-rom-list');
+    list.forEach(function (item) { addRomItem(ul, item); });
   }).catch(function () {});
 
   // test hook: ?romfile=<file in roms/> loads it directly (not shown in the built-in list)

@@ -32,6 +32,10 @@
           <h3>内置免费 ROM</h3>
           <ul id="rom-list"></ul>
         </div>
+        <div id="local-roms" class="hidden">
+          <h3>本地 ROM <span class="tiny">roms/local.json · 不随仓库分发</span></h3>
+          <ul id="local-rom-list"></ul>
+        </div>
       </div>
 
       <div class="card">
@@ -103,7 +107,7 @@
   </div>
 
   <footer>
-    仅内置免费 homebrew / 测试 ROM；商业 ROM（含任天堂作品）绝不内置或分发，仅支持用户本地拖拽加载自己的 ROM 文件。
+    仅内置免费 homebrew / 测试 ROM；商业 ROM（含任天堂作品）绝不内置或分发。自有的 .nes 可拖拽加载，或放入 roms/ 并在 roms/local.json 登记后从「本地 ROM」列表加载（均只在本地解析运行）。
   </footer>
 </div>
 
