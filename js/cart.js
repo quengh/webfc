@@ -209,7 +209,7 @@
             break;
           case 0xA001: break; // PRG-RAM protect: RAM kept always writable
           case 0xC000: this.mmc3IRQLatch = val; break;
-          case 0xC001: this.mmc3IRQReload = true; break;
+          case 0xC001: this.mmc3IRQCounter = 0; this.mmc3IRQReload = true; break;
           case 0xE000: this.irqPending = false; this.mmc3IRQEnable = false; break;
           case 0xE001: this.mmc3IRQEnable = true; break;
         }
