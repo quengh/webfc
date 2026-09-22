@@ -40,8 +40,10 @@ python3 -m http.server 8848 --bind 127.0.0.1
 | FC 按键 | 键盘 |
 |---------|------|
 | 方向键 | 方向键 / WASD |
-| A | X |
-| B | Z |
+| A | K |
+| B | J |
+| A 连发 | I（按住） |
+| B 连发 | U（按住） |
 | Start | Enter |
 | Select | 右 Shift |
 

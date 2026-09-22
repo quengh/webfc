@@ -54,16 +54,29 @@
   var KEYMAP = {
     ArrowUp: 'UP', ArrowDown: 'DOWN', ArrowLeft: 'LEFT', ArrowRight: 'RIGHT',
     KeyW: 'UP', KeyS: 'DOWN', KeyA: 'LEFT', KeyD: 'RIGHT',
-    KeyX: 'A', KeyZ: 'B', Enter: 'START', ShiftRight: 'SELECT'
+    KeyK: 'A', KeyJ: 'B', Enter: 'START', ShiftRight: 'SELECT'
   };
+  // U/I = 连发 B/A（按住以约 12Hz 自动连打）
+  var TURBOMAP = { KeyU: 'B', KeyI: 'A' };
+  var turboHeld = { A: false, B: false };
   document.addEventListener('keydown', function (e) {
+    var t = TURBOMAP[e.code];
+    if (t) { turboHeld[t] = true; e.preventDefault(); return; }
     var b = KEYMAP[e.code];
     if (b) { nes.setButton(1, b, true); e.preventDefault(); }
   });
   document.addEventListener('keyup', function (e) {
+    var t = TURBOMAP[e.code];
+    if (t) { turboHeld[t] = false; nes.setButton(1, t, false); e.preventDefault(); return; }
     var b = KEYMAP[e.code];
     if (b) { nes.setButton(1, b, false); e.preventDefault(); }
   });
+  setInterval(function () {
+    if (!nes) return;
+    var on = ((Date.now() / 40) | 0) % 2 === 0;
+    if (turboHeld.B) nes.setButton(1, 'B', on);
+    if (turboHeld.A) nes.setButton(1, 'A', on);
+  }, 40);
 
   function pollGamepad() {
     if (!navigator.getGamepads) return;
