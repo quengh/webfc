@@ -1,0 +1,30 @@
+[
+  {
+    "name": "240p Test Suite",
+    "file": "240pee.nes",
+    "tag": "homebrew",
+    "license": "GPL-2.0 · Artemio Urbina / Damian Yerrick（NES）· 源码 ArtemioUrbina/240pTestSuite",
+    "source": "https://github.com/christopherpow/nes-test-roms/blob/master/240pee/240pee.nes"
+  },
+  {
+    "name": "NES15 十五拼图",
+    "file": "nes15-NTSC.nes",
+    "tag": "homebrew",
+    "license": "BSD · Mathew Brenaman · 见 roms/nes15-LICENSE",
+    "source": "https://github.com/christopherpow/nes-test-roms/blob/master/nes15-1.0.0/nes15-NTSC.nes"
+  },
+  {
+    "name": "nestest",
+    "file": "nestest.nes",
+    "tag": "test",
+    "license": "免费测试 ROM · Kevin Horton · 见 roms/nestest.txt",
+    "source": "https://github.com/christopherpow/nes-test-roms/blob/master/other/nestest.nes"
+  },
+  {
+    "name": "Simple Parallax Demo",
+    "file": "SimpleParallaxDemo.nes",
+    "tag": "homebrew",
+    "license": "homebrew 演示 · nes-test-roms 收录 · 自由分发",
+    "source": "https://github.com/christopherpow/nes-test-roms/blob/master/other/SimpleParallaxDemo.nes"
+  }
+]

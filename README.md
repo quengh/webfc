@@ -31,7 +31,7 @@ python3 -m http.server 8848 --bind 127.0.0.1
 
 浏览器打开 `http://127.0.0.1:8848`，然后自行选择你有权使用的本地 `.nes` 文件。
 
-> **ROM 说明**：本源码包不含任何 ROM 文件。页面可能显示“内置免费 ROM”按钮，但对应资源未随代码附带，选择**本地 ROM 文件**入口即可正常使用。
+> **ROM 说明**：页面「内置免费 ROM」仅包含开源/自由分发的 homebrew 与测试 ROM（240p Test Suite、NES15、nestest、Simple Parallax Demo），许可证见 `roms/` 与 `roms/index.json`。不含任何商业 ROM。本地 `.nes` 请自行拖拽加载。
 
 ---
 
@@ -74,6 +74,7 @@ webfc/
 │   ├── nes.js          总线 / 手柄 / 帧调度 / 存档
 │   ├── crt.js          WebGL CRT 后处理
 │   └── ui.js           页面 UI / 音频输出 / 输入绑定
+├── roms/               内置免费 homebrew/测试 ROM + index.json（不含商业 ROM）
 ├── docs/REVIEW.md      代码审查摘要（架构、已知问题）
 └── tests/              测试脚本（历史开发辅助脚本）
     ├── cpu_selftest.js  独立 CPU 操作码自测（无外部依赖）
@@ -104,6 +105,7 @@ node tests/cpu_selftest.js
 
 ## 许可证
 
-本项目目前未指定开源许可证，版权由作者保留。
+本项目源码采用 [MIT License](LICENSE)。
 
-ROM 版权归各自原始版权方所有，与本项目代码无关。
+内置免费 homebrew / 测试 ROM 保留其原许可证，详见 [THIRD_PARTY.md](THIRD_PARTY.md)。商业 ROM 不在本仓库分发，版权归各自原始版权方所有，与本项目代码无关。
+

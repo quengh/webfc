@@ -1,6 +1,14 @@
-# ROMs
-roms/
-*.nes
+# ROMs — default ignore commercial/user dumps.
+# Only free homebrew/test ROMs below are tracked (no commercial content).
+roms/*
+!roms/index.json
+!roms/240pee.nes
+!roms/nes15-NTSC.nes
+!roms/nestest.nes
+!roms/SimpleParallaxDemo.nes
+!roms/nes15-LICENSE
+!roms/nes15-README
+!roms/nestest.txt
 *.rom
 *.sav
 *.state
